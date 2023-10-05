@@ -77,6 +77,13 @@ let selectedPoint = null;
 
 /**
  * @global
+ * @var {Object|null} firstSelectedPoint
+ * @description 用于跟踪第一个选中的点。初始值为null。
+ */
+let firstSelectedPoint = null;
+
+/**
+ * @global
  * @var {Object|null} secondSelectedPoint
  * @description 用于跟踪第二个选中的点。初始值为null。
  */
@@ -389,8 +396,8 @@ function renderAll() {
 
         // 如果有第二个选定的点，添加额外的信息并画圈
         if (secondSelectedPoint) {
-            drawSelectedPoint(selectedPoint.x, selectedPoint.y, '#eea000', circleModeRadius);
-            drawSelectedPoint(secondSelectedPoint.x, secondSelectedPoint.y, '#eea000', circleModeRadius);
+            drawSelectedPoint(firstSelectedPoint.x, firstSelectedPoint.y, '#ff0e72', circleModeRadius);
+            drawSelectedPoint(secondSelectedPoint.x, secondSelectedPoint.y, '#ff0e72', circleModeRadius);
         }
     }
 
@@ -480,7 +487,7 @@ function circleModeCalculation() {
     while (true) {
         let currentFramePoints = new Map();
         if (maxCircleModeFrame === 0) {
-            addPointToMap(selectedPoint.x, selectedPoint.y, currentFramePoints);
+            addPointToMap(firstSelectedPoint.x, firstSelectedPoint.y, currentFramePoints);
             addPointToMap(secondSelectedPoint.x, secondSelectedPoint.y, currentFramePoints);
             circleModeFrames.push(currentFramePoints);
 
@@ -644,12 +651,14 @@ main_canvas.addEventListener('mousedown', function (event) {
     // 如果找到了被点击的现有点
     if (existingPoint) {
         if (selectedPoint && event.ctrlKey && !circleMode) {
+            firstSelectedPoint = selectedPoint;
             secondSelectedPoint = existingPoint;
             circleModeRadius = Math.sqrt((selectedPoint.x - existingPoint.x) ** 2
                 + (selectedPoint.y - existingPoint.y) ** 2);
         } else {
             // 设置选中的点和其在当前帧的信息
             selectedPoint = existingPoint;
+            firstSelectedPoint = selectedPoint;
             selectedPointInfo = selectedPoint.frames[currentFrame];
             secondSelectedPoint = null;
 
@@ -663,9 +672,10 @@ main_canvas.addEventListener('mousedown', function (event) {
         selectedCluster = null;
         selectedPoint = null;
         selectedPointInfo = null;
-        secondSelectedPoint = null;
 
         if (!circleMode) {
+            firstSelectedPoint = null;
+            secondSelectedPoint = null;
             circleModeRadius = 0;
         }
 
@@ -995,6 +1005,7 @@ function clearAll() {
     selectedCluster = null;
     selectedPoint = null;
     selectedPointInfo = null;
+    firstSelectedPoint = null;
     secondSelectedPoint = null;
 
     // 重置缩放级别和点半径
