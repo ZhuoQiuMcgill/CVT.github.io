@@ -393,12 +393,11 @@ function renderAll() {
         const {x, y} = selectedPoint;
         drawSelectedPoint(x, y);
         document.getElementById("pointInfo").innerHTML = info_text + selectedPointInfo.info;
+    }
 
-        // 如果有第二个选定的点，添加额外的信息并画圈
-        if (secondSelectedPoint) {
-            drawSelectedPoint(firstSelectedPoint.x, firstSelectedPoint.y, '#ff0e72', circleModeRadius);
-            drawSelectedPoint(secondSelectedPoint.x, secondSelectedPoint.y, '#ff0e72', circleModeRadius);
-        }
+    if (firstSelectedPoint && secondSelectedPoint) {
+        drawSelectedPoint(firstSelectedPoint.x, firstSelectedPoint.y, '#ff0e72', circleModeRadius);
+        drawSelectedPoint(secondSelectedPoint.x, secondSelectedPoint.y, '#ff0e72', circleModeRadius);
     }
 
     // 根据测试结果更新背景颜色
@@ -580,11 +579,12 @@ function updateGeneralInfo() {
         document.getElementById("Selected-Point").innerHTML = "Selected Point:";
     }
 
-
-    // 更新总帧数和总点数
+    // 画圈模式下的显示
     if (circleMode) {
         document.getElementById("Total-Frames").innerHTML = "Total Frames: " + maxCircleModeFrame;
         document.getElementById("Point-Distance").innerHTML = "Point Distance: " + circleModeRadius.toFixed(2);
+        document.getElementById("Selected-Point").innerHTML =
+            "Selected Point: (" + selectedPoint.x.toFixed(2) + ", " + selectedPoint.y.toFixed(2) + ")";
     } else {
         document.getElementById("Total-Frames").innerHTML = "Total Frames: " + maxFrame;
     }
@@ -658,9 +658,11 @@ main_canvas.addEventListener('mousedown', function (event) {
         } else {
             // 设置选中的点和其在当前帧的信息
             selectedPoint = existingPoint;
-            firstSelectedPoint = selectedPoint;
+            if (!circleMode) {
+                firstSelectedPoint = selectedPoint;
+                secondSelectedPoint = null;
+            }
             selectedPointInfo = selectedPoint.frames[currentFrame];
-            secondSelectedPoint = null;
 
             // 如果按下了Shift键，则设置选中的簇
             if (event.shiftKey) {
