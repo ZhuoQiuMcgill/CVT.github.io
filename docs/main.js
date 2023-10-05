@@ -1037,6 +1037,7 @@ function clearAll() {
     document.getElementById("general-info").style.backgroundColor = "white";
     document.getElementById("main_canvas").style.borderColor = "#ccc";
 
+    updateButtonColor();
 }
 
 
