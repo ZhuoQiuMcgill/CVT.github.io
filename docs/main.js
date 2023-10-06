@@ -124,7 +124,6 @@ let arrowKeyDownInterval = null;
  */
 let circleMode = false;
 
-
 /**
  * @global
  * @var {Array} circleModeFrames
@@ -485,6 +484,13 @@ function isClickedPos(x, y, click_point, radius = pointRadius * 2) {
 }
 
 
+
+/**
+ * @function circleModeCalculation
+ * @description 计算圆形模式下的帧数据。
+ * @global
+ * 使用了全局变量：currentCircleModeFrame, maxCircleModeFrame, circleModeFrames, maxPoint, importedJSONData, circleModeRadius, firstSelectedPoint, secondSelectedPoint
+ */
 function circleModeCalculation() {
     currentCircleModeFrame = 0;
     maxCircleModeFrame = 0;
@@ -493,6 +499,8 @@ function circleModeCalculation() {
     let newPoints = new Map(); //用于储存上一帧新增的点
     while (true) {
         let currentFramePoints = new Map();
+
+        // 第一帧时将选中的两个点加入
         if (maxCircleModeFrame === 0) {
             addPointToMap(firstSelectedPoint.x, firstSelectedPoint.y, currentFramePoints);
             addPointToMap(secondSelectedPoint.x, secondSelectedPoint.y, currentFramePoints);
@@ -535,10 +543,27 @@ function circleModeCalculation() {
     }
 }
 
+
+/**
+ * @function addPointToMap
+ * @description 将点的坐标添加到给定的Map对象中。
+ * @param {number} x - 点的x坐标。
+ * @param {number} y - 点的y坐标。
+ * @param {Map} myMap - 要添加点到的Map对象。
+ */
 function addPointToMap(x, y, myMap) {
     myMap.set(x + "," + y, {x: x, y: y});
 }
 
+
+/**
+ * @function hasPoint
+ * @description 检查给定的点是否存在于指定的Map对象中。
+ * @param {number} x - 点的x坐标。
+ * @param {number} y - 点的y坐标。
+ * @param {Map} myMap - 要检查点的Map对象。
+ * @returns {boolean} 点是否存在于Map中。
+ */
 function hasPoint(x, y, myMap) {
     return myMap.has(x + "," + y);
 }
@@ -756,6 +781,14 @@ document.addEventListener('keydown', function (event) {
  *  按钮相关功能
  *  ====================================================================
  * */
+
+
+/**
+ * @event radiusSlider#input
+ * @description 监听"radiusSlider"元素的输入事件，并更新相关的全局变量和UI。
+ * @global
+ * 使用了全局变量：sliderRadiusValue
+ */
 document.getElementById("radiusSlider").addEventListener("input", function() {
     const sliderElement = document.getElementById("radiusSlider");
     const valueElement = document.getElementById("radiusValue");
@@ -779,7 +812,12 @@ document.getElementById("radiusSlider").addEventListener("input", function() {
 
 
 
-
+/**
+ * @event circle-mode#click
+ * @description 监听"circle-mode"按钮的点击事件，用于切换圆形模式。
+ * @global
+ * 使用了全局变量：circleMode, selectedPoint, secondSelectedPoint, circleModeFrames, currentCircleModeFrame, maxCircleModeFrame, circleModeRadius, currentFrame
+ */
 document.getElementById('circle-mode').addEventListener('click', function () {
     if (circleMode) {
         // 在circleMode下点击按钮将会退出circleMode并重置数据
