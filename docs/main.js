@@ -157,6 +157,14 @@ let circleModeRadius = 0;
 
 /**
  * @global
+ * @var {number} sliderRadiusValue
+ * @description slider设置的半径比值。初始值为1。
+ */
+let sliderRadiusValue = 1;
+
+
+/**
+ * @global
  * @var {Object} main_canvas
  * @description Canvas元素。
  */
@@ -605,7 +613,7 @@ function updateGeneralInfo() {
  * updatePointRadius();
  */
 function updatePointRadius() {
-    pointRadius = importedJSONData.point_radius / zoomLevel;
+    pointRadius = (importedJSONData.point_radius / zoomLevel) * sliderRadiusValue;
 }
 
 
@@ -748,6 +756,29 @@ document.addEventListener('keydown', function (event) {
  *  按钮相关功能
  *  ====================================================================
  * */
+document.getElementById("radiusSlider").addEventListener("input", function() {
+    const sliderElement = document.getElementById("radiusSlider");
+    const valueElement = document.getElementById("radiusValue");
+    const sliderValue = parseInt(sliderElement.value, 10);  // 转换为整数
+    let actualValue;
+
+    if (sliderValue === 50) {
+        actualValue = 1;
+    } else if (sliderValue < 50) {
+        actualValue = 0.1 + (sliderValue / 50) * 0.9;
+    } else {
+        actualValue = Math.pow(10, (sliderValue - 50) / 50);
+    }
+
+    valueElement.textContent = actualValue.toFixed(2);  // 更新显示值
+    sliderRadiusValue = actualValue;  // 更新全局变量（如果有的话）
+    console.log(actualValue);  // 输出到控制台
+
+    renderAll();
+});
+
+
+
 
 document.getElementById('circle-mode').addEventListener('click', function () {
     if (circleMode) {
@@ -1013,6 +1044,7 @@ function clearAll() {
     // 重置缩放级别和点半径
     zoomLevel = 1;
     pointRadius = 4;
+    sliderRadiusValue = 1;
 
     // 清除导入的JSON数据和数据缓存
     importedJSONData = null;
@@ -1036,6 +1068,10 @@ function clearAll() {
     document.getElementById("pointInfo").innerHTML = "Click on a point to see details here.";
     document.getElementById("general-info").style.backgroundColor = "white";
     document.getElementById("main_canvas").style.borderColor = "#ccc";
+    document.getElementById("radiusSlider").value = 50;
+    document.getElementById("radiusValue").textContent = "1";
+
+
 
     updateButtonColor();
 }
