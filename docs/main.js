@@ -164,6 +164,24 @@ let sliderRadiusValue = 1;
 
 /**
  * @global
+ * @var {boolean} eraserMode
+ * @description 用于判断是否进入橡皮擦模式。
+ */
+let eraserMode = false;
+
+
+/**
+ * @global
+ * @var {number} eraserRadius
+ * @description eraser设置的半径。初始值为20。
+ */
+let eraserRadius = 30;
+
+let currentMouseX = 0;
+let currentMouseY = 0;
+
+/**
+ * @global
  * @var {Object} main_canvas
  * @description Canvas元素。
  */
@@ -309,7 +327,6 @@ function drawPoint(x, y, color = 'black', radius = pointRadius) {
     // 填充路径
     ctx.fill();
 }
-
 /**
  * @function drawSelectedPoint
  * @description 在Canvas上绘制一个被选中的点。
@@ -333,6 +350,13 @@ function drawSelectedPoint(x, y, color = 'red', radius = pointRadius * 2) {
     ctx.stroke();
 }
 
+function renderEraser() {
+    if (eraserMode) {
+        const canvasPos = convertMouseToCanvasCoordinate(currentMouseX, currentMouseY);
+        drawPoint(canvasPos.x, canvasPos.y, 'black', eraserRadius / zoomLevel);
+    }
+}
+
 
 /**
  * @function renderAll
@@ -354,26 +378,28 @@ function renderAll() {
 
     // 渲染每一个点
     importedJSONData.points.forEach(point => {
-        const {x, y} = point;
-        const label = point.frames[currentFrame].label;
+        if (point.display) {
+            const {x, y} = point;
+            const label = point.frames[currentFrame].label;
 
-        // 根据点的标签（label）进行不同的渲染
-        if (label === proximity.merging_clusters.first_cluster_id) {
-            drawPoint(x, y, 'red', 1.5 * pointRadius);
-        } else if (label === proximity.merging_clusters.second_cluster_id) {
-            drawPoint(x, y, 'blue', 1.5 * pointRadius);
-        } else {
-            // 生成或获取点的颜色
-            if (!clusterColorMap[label]) {
-                clusterColorMap[label] = generateRandomColor(label);
-            }
-            const color = clusterColorMap[label];
-
-            // 如果点属于选定的簇（cluster），则用特殊的半径绘制
-            if (label === selectedCluster) {
-                drawPoint(x, y, color, pointRadius * 1.5);
+            // 根据点的标签（label）进行不同的渲染
+            if (label === proximity.merging_clusters.first_cluster_id) {
+                drawPoint(x, y, 'red', 1.5 * pointRadius);
+            } else if (label === proximity.merging_clusters.second_cluster_id) {
+                drawPoint(x, y, 'blue', 1.5 * pointRadius);
             } else {
-                drawPoint(x, y, color);
+                // 生成或获取点的颜色
+                if (!clusterColorMap[label]) {
+                    clusterColorMap[label] = generateRandomColor(label);
+                }
+                const color = clusterColorMap[label];
+
+                // 如果点属于选定的簇（cluster），则用特殊的半径绘制
+                if (label === selectedCluster) {
+                    drawPoint(x, y, color, pointRadius * 1.5);
+                } else {
+                    drawPoint(x, y, color);
+                }
             }
 
             // 如果在circleMode中
@@ -413,6 +439,9 @@ function renderAll() {
     } else {
         document.getElementById("general-info").style.backgroundColor = "#B3FFCA";
     }
+
+
+    renderEraser();
 
     // 恢复之前保存的绘图状态
     restoreCanvasTransformations();
@@ -460,6 +489,19 @@ function convertMouseToCanvasCoords(event, canvasElement, offsetX, offsetY, zoom
     const finalY = scaledY - offsetY;
 
     // 返回转换后的坐标
+    return {x: finalX, y: finalY};
+}
+
+function convertMouseToCanvasCoordinate(mouseX, mouseY) {
+    const rect = main_canvas.getBoundingClientRect();
+
+    const scaledX = (mouseX - main_canvas.width / 2) / zoomLevel + main_canvas.width / 2;
+    const scaledY = (mouseY - main_canvas.height / 2) / zoomLevel + main_canvas.height / 2;
+
+
+    const finalX = scaledX - offsetX;
+    const finalY = scaledY - offsetY;
+
     return {x: finalX, y: finalY};
 }
 
@@ -523,7 +565,7 @@ function circleModeCalculation() {
                 } else {
                     for (const p of newPoints.values()) {
                         // 对上一帧新增的点进行一次碰撞箱判断，如果point在碰撞箱内则就添加到Map内
-                        if (isClickedPos(p.x, p.y, point, circleModeRadius)) {
+                        if (isClickedPos(p.x, p.y, point, circleModeRadius) && point.display) {
                             addPointToMap(point.x, point.y, currentFramePoints);
                             addPointToMap(point.x, point.y, temp);
                         }
@@ -656,6 +698,12 @@ function updateButtonColor() {
         }
         but.innerHTML = 'Enter';
     }
+
+    if (!eraserMode) {
+        document.getElementById("eraser-mode").style.backgroundColor = "#007bff";
+    } else {
+        document.getElementById("eraser-mode").style.backgroundColor = "#036727";
+    }
 }
 
 
@@ -678,43 +726,56 @@ main_canvas.addEventListener('mousedown', function (event) {
     // 从导入的JSON数据中获取点
     let json_points = importedJSONData.points;
 
-    // 查找是否有现有的点被点击
-    const existingPoint = json_points.find(point => isClickedPos(point.x, point.y, clickedPoint));
 
-    // 如果找到了被点击的现有点
-    if (existingPoint) {
-        if (selectedPoint && event.ctrlKey && !circleMode) {
-            firstSelectedPoint = selectedPoint;
-            secondSelectedPoint = existingPoint;
-            circleModeRadius = Math.sqrt((selectedPoint.x - existingPoint.x) ** 2
-                + (selectedPoint.y - existingPoint.y) ** 2);
-        } else {
-            // 设置选中的点和其在当前帧的信息
-            selectedPoint = existingPoint;
-            if (!circleMode) {
-                firstSelectedPoint = selectedPoint;
-                secondSelectedPoint = null;
+    if (eraserMode) {
+        json_points.forEach(point=>{
+            if (isClickedPos(point.x, point.y, clickedPoint, eraserRadius / zoomLevel)) {
+                point.display = false;
             }
-            selectedPointInfo = selectedPoint.frames[currentFrame];
+        })
 
-            // 如果按下了Shift键，则设置选中的簇
-            if (event.shiftKey) {
-                selectedCluster = selectedPointInfo.label;
-            }
-        }
+
     } else {
-        // 如果没有点被点击，清除选中的簇和点
-        selectedCluster = null;
-        selectedPoint = null;
-        selectedPointInfo = null;
+        // 查找是否有现有的点被点击
+        const existingPoint = json_points.find(point => isClickedPos(point.x, point.y, clickedPoint) && point.display);
 
-        if (!circleMode) {
-            firstSelectedPoint = null;
-            secondSelectedPoint = null;
-            circleModeRadius = 0;
+        // 如果找到了被点击的现有点
+        if (existingPoint) {
+            if (selectedPoint && event.ctrlKey && !circleMode) {
+                firstSelectedPoint = selectedPoint;
+                secondSelectedPoint = existingPoint;
+                circleModeRadius = Math.sqrt((selectedPoint.x - existingPoint.x) ** 2
+                    + (selectedPoint.y - existingPoint.y) ** 2);
+            } else {
+                // 设置选中的点和其在当前帧的信息
+                selectedPoint = existingPoint;
+                if (!circleMode) {
+                    firstSelectedPoint = selectedPoint;
+                    secondSelectedPoint = null;
+                }
+                selectedPointInfo = selectedPoint.frames[currentFrame];
+
+                // 如果按下了Shift键，则设置选中的簇
+                if (event.shiftKey) {
+                    selectedCluster = selectedPointInfo.label;
+                }
+            }
+        } else {
+            // 如果没有点被点击，清除选中的簇和点
+            selectedCluster = null;
+            selectedPoint = null;
+            selectedPointInfo = null;
+
+            if (!circleMode) {
+                firstSelectedPoint = null;
+                secondSelectedPoint = null;
+                circleModeRadius = 0;
+            }
+
         }
-
     }
+
+
 
     // 更新一般信息和重新渲染
     updateButtonColor();
@@ -776,6 +837,16 @@ document.addEventListener('keydown', function (event) {
     renderAll();
 });
 
+main_canvas.addEventListener("mousemove", function(event) {
+    if (eraserMode) {
+        // 获取鼠标在canvas内的坐标
+        const rect = main_canvas.getBoundingClientRect();
+        currentMouseX = event.clientX - rect.left;
+        currentMouseY = event.clientY - rect.top;
+        renderAll();
+    }
+});
+
 
 /** ====================================================================
  *  按钮相关功能
@@ -800,11 +871,11 @@ document.getElementById("radiusSlider").addEventListener("input", function() {
     } else if (sliderValue < 50) {
         actualValue = 0.1 + (sliderValue / 50) * 0.9;
     } else {
-        actualValue = Math.pow(10, (sliderValue - 50) / 50);
+        actualValue = 1 + (sliderValue - 50) * (20 - 1) / (100 - 50);
     }
 
     valueElement.textContent = actualValue.toFixed(2);  // 更新显示值
-    sliderRadiusValue = actualValue;  // 更新全局变量（如果有的话）
+    sliderRadiusValue = actualValue;  // 更新全局变量
     console.log(actualValue);  // 输出到控制台
 
     renderAll();
@@ -831,13 +902,40 @@ document.getElementById('circle-mode').addEventListener('click', function () {
 
         document.getElementById("main_canvas").style.borderColor = "#ccc";
         document.getElementById("gotoPage").value = currentFrame;
-    } else if (selectedPoint && secondSelectedPoint) {
+    } else if (selectedPoint && secondSelectedPoint && !eraserMode) {
         circleMode = true;
         circleModeCalculation();
 
         document.getElementById("main_canvas").style.borderColor = "#ff0000";
         document.getElementById("gotoPage").value = currentCircleModeFrame;
     }
+    updateGeneralInfo();
+    updateButtonColor();
+    renderAll();
+});
+
+
+document.getElementById('eraser-mode').addEventListener('click', function () {
+    if (!circleMode) {
+        if (!eraserMode) {
+            eraserMode = true;
+            document.getElementById("eraser-mode").style.backgroundColor = "#036727";
+        } else {
+            eraserMode = false;
+            document.getElementById("eraser-mode").style.backgroundColor = "#007bff";
+        }
+
+    }
+    updateGeneralInfo();
+    updateButtonColor();
+    renderAll();
+});
+
+document.getElementById('restore').addEventListener('click', function () {
+    importedJSONData.points.forEach(point=>{
+        point.display = true;
+    })
+
     updateGeneralInfo();
     updateButtonColor();
     renderAll();
@@ -1098,6 +1196,9 @@ function clearAll() {
     circleModeRadius = 0;
     circleModeFrames = [];
 
+    //
+    eraserMode = false;
+
     // 重置信息框内信息
     document.getElementById("Total-Frames").innerHTML = "Total Frames:";
     document.getElementById("Total-Points").innerHTML = "Total Points:";
@@ -1107,7 +1208,7 @@ function clearAll() {
     document.getElementById("general-info").style.backgroundColor = "white";
     document.getElementById("main_canvas").style.borderColor = "#ccc";
     document.getElementById("radiusSlider").value = 50;
-    document.getElementById("radiusValue").textContent = "1";
+    document.getElementById("radiusValue").textContent = "1.00";
 
 
 
@@ -1182,6 +1283,11 @@ function initializeJsonInfo() {
 
     // 将Canvas中心定位到质心
     centerCanvasToMassCenter();
+
+    // 初始化所有点的display参数
+    importedJSONData.points.forEach(point=>{
+        point.display = true;
+    })
 
     // 更新缩放级别和点半径
     zoomLevel = main_canvas.width / importedJSONData.canvas_size;
