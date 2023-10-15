@@ -177,8 +177,44 @@ let eraserMode = false;
  */
 let eraserRadius = 30;
 
+
+/**
+ * @var {number} currentMouseX
+ * @description 当前鼠标在Canvas上的X坐标。初始值为0。
+ */
 let currentMouseX = 0;
+
+
+/**
+ * @var {number} currentMouseY
+ * @description 当前鼠标在Canvas上的Y坐标。初始值为0。
+ */
 let currentMouseY = 0;
+
+
+/**
+ * @var {boolean} mouseDown
+ * @description 鼠标按下的状态。true为按下，false为未按下。初始值为false。
+ */
+let mouseDown = false;
+
+/**
+ * @var {boolean} refPointMode
+ * @description 是否处于参考点模式。在此模式下，用户可以选择参考点。初始值为false。
+ */
+let refPointMode = false;
+
+/**
+ * @var {Array} refPointFrames
+ * @description 存储参考点所在帧的数组。空数组表示没有参考点。
+ */
+let refPointFrames = [];
+
+/**
+ * @var {number} currentRefFrame
+ * @description 当前选定的参考点帧。初始值为0。
+ */
+let currentRefFrame = 0;
 
 /**
  * @global
@@ -327,6 +363,7 @@ function drawPoint(x, y, color = 'black', radius = pointRadius) {
     // 填充路径
     ctx.fill();
 }
+
 /**
  * @function drawSelectedPoint
  * @description 在Canvas上绘制一个被选中的点。
@@ -350,6 +387,13 @@ function drawSelectedPoint(x, y, color = 'red', radius = pointRadius * 2) {
     ctx.stroke();
 }
 
+
+/**
+ * @function renderEraser
+ * @description 渲染橡皮擦在Canvas上的效果。
+ *
+ * 该函数在橡皮擦模式（eraserMode）下运行。它使用当前鼠标的位置和橡皮擦的半径在Canvas上画一个黑色的点，代表橡皮擦的位置。
+ */
 function renderEraser() {
     if (eraserMode) {
         const canvasPos = convertMouseToCanvasCoordinate(currentMouseX, currentMouseY);
@@ -423,9 +467,11 @@ function renderAll() {
 
     // 如果有选定的点，添加额外的信息
     if (selectedPoint) {
-        const {x, y} = selectedPoint;
-        drawSelectedPoint(x, y);
-        document.getElementById("pointInfo").innerHTML = info_text + selectedPointInfo.info;
+        if (selectedPoint.display) {
+            const {x, y} = selectedPoint;
+            drawSelectedPoint(x, y);
+            document.getElementById("pointInfo").innerHTML = info_text + selectedPointInfo.info;
+        }
     }
 
     if (firstSelectedPoint && secondSelectedPoint) {
@@ -493,8 +539,6 @@ function convertMouseToCanvasCoords(event, canvasElement, offsetX, offsetY, zoom
 }
 
 function convertMouseToCanvasCoordinate(mouseX, mouseY) {
-    const rect = main_canvas.getBoundingClientRect();
-
     const scaledX = (mouseX - main_canvas.width / 2) / zoomLevel + main_canvas.width / 2;
     const scaledY = (mouseY - main_canvas.height / 2) / zoomLevel + main_canvas.height / 2;
 
@@ -503,6 +547,22 @@ function convertMouseToCanvasCoordinate(mouseX, mouseY) {
     const finalY = scaledY - offsetY;
 
     return {x: finalX, y: finalY};
+}
+
+
+/**
+ * @function erasePoints
+ * @param {Object} clickedPoint - 传入的被点击的点的坐标对象，具有x和y属性。
+ * @description 在Canvas上删除点。
+ *
+ * 该函数遍历importedJSONData.points数组，查找与clickedPoint接近的点。如果找到这样的点，它的display属性将被设置为false，从而在接下来的渲染中不再显示。
+ */
+function erasePoints(clickedPoint) {
+    importedJSONData.points.forEach(point => {
+        if (isClickedPos(point.x, point.y, clickedPoint, eraserRadius / zoomLevel)) {
+            point.display = false;
+        }
+    })
 }
 
 
@@ -524,7 +584,6 @@ function isClickedPos(x, y, click_point, radius = pointRadius * 2) {
     // 判断距离是否小于或等于给定的半径
     return distance <= radius;
 }
-
 
 
 /**
@@ -685,18 +744,34 @@ function updatePointRadius() {
 
 
 function updateButtonColor() {
-    const but = document.getElementById("circle-mode");
+    const refModeButton = document.getElementById("ref-mode");
+    if (refPointMode) {
+        refModeButton.style.backgroundColor = 'red';
+        refModeButton.innerHTML = 'Exit';
+        document.getElementById("main_canvas").style.borderColor = "#ffd343";
+    } else {
+        refModeButton.style.backgroundColor = '#007bff';
+        refModeButton.innerHTML = 'Ref Mode';
+        document.getElementById("main_canvas").style.borderColor = "#ccc";
+    }
 
+    const circleModeButton = document.getElementById("circle-mode");
     if (circleMode) {
-        but.style.backgroundColor = 'red';
-        but.innerHTML = 'Exit';
+        circleModeButton.style.backgroundColor = 'red';
+        circleModeButton.innerHTML = 'Exit';
+
+        document.getElementById("main_canvas").style.borderColor = "#ff0000";
     } else {
         if (selectedPoint && secondSelectedPoint) {
-            but.style.backgroundColor = 'green';
+            circleModeButton.style.backgroundColor = 'green';
         } else {
-            but.style.backgroundColor = '#007bff';
+            circleModeButton.style.backgroundColor = '#007bff';
         }
-        but.innerHTML = 'Enter';
+        circleModeButton.innerHTML = 'Circle Mode';
+
+        if (!refPointMode) {
+            document.getElementById("main_canvas").style.borderColor = "#ccc";
+        }
     }
 
     if (!eraserMode) {
@@ -706,6 +781,37 @@ function updateButtonColor() {
     }
 }
 
+/**
+ * @function selectRefFrame
+ * @description 选择与当前选定点（selectedPoint）相关联的参考帧。
+ *
+ * 该函数遍历所有帧，通过调用`isClickedPos`函数来确定与选定点（selectedPoint）有关的参考点。然后将这些参考帧的索引储存到`refPointFrames`数组中。
+ *
+ * @returns {boolean} 如果找到与selectedPoint相关的参考帧则返回true，否则返回false。
+ */
+function selectRefFrame() {
+    if (!selectedPoint) {
+        return false;
+    }
+
+    if (!selectedPoint.display) {
+        return false;
+    }
+
+    refPointFrames = [];
+    for (let i = 0; i < maxFrame; i++) {
+        const proximity = importedJSONData.frame_data[i].proximity;
+        const ref1 = proximity.ref_points[0];
+        const ref2 = proximity.ref_points[1];
+
+        if (isClickedPos(selectedPoint.x, selectedPoint.y, ref1, pointRadius) ||
+            isClickedPos(selectedPoint.x, selectedPoint.y, ref2, pointRadius)) {
+            refPointFrames.push(i);
+        }
+    }
+
+    return refPointFrames.length !== 0;
+}
 
 /** ====================================================================
  *  canvas交互相关功能
@@ -718,6 +824,8 @@ function updateButtonColor() {
  * 该事件监听器处理鼠标点击事件，用于选择点和更新相关信息。
  */
 main_canvas.addEventListener('mousedown', function (event) {
+    // 将鼠标按下
+    mouseDown = true;
 
     // 转换鼠标坐标到Canvas坐标系
     const {x, y} = convertMouseToCanvasCoords(event, main_canvas, offsetX, offsetY, zoomLevel);
@@ -728,13 +836,7 @@ main_canvas.addEventListener('mousedown', function (event) {
 
 
     if (eraserMode) {
-        json_points.forEach(point=>{
-            if (isClickedPos(point.x, point.y, clickedPoint, eraserRadius / zoomLevel)) {
-                point.display = false;
-            }
-        })
-
-
+        erasePoints(clickedPoint);
     } else {
         // 查找是否有现有的点被点击
         const existingPoint = json_points.find(point => isClickedPos(point.x, point.y, clickedPoint) && point.display);
@@ -776,11 +878,45 @@ main_canvas.addEventListener('mousedown', function (event) {
     }
 
 
-
     // 更新一般信息和重新渲染
     updateButtonColor();
     updateGeneralInfo();
     renderAll();
+});
+
+
+/**
+ * @event mouseup
+ * @description 当在main_canvas上释放鼠标按钮时触发。
+ *
+ * 该事件监听器处理鼠标释放事件，用于更新`mouseDown`变量的状态。
+ */
+main_canvas.addEventListener('mouseup', function (event) {
+    mouseDown = false;
+});
+
+
+/**
+ * @event mousemove
+ * @description 当鼠标在main_canvas上移动时触发。
+ *
+ * 该事件监听器处理鼠标移动事件，主要在橡皮擦模式（eraserMode）下运行。它获取鼠标的当前位置，并在按下鼠标（mouseDown=true）的情况下擦除点。
+ */
+main_canvas.addEventListener("mousemove", function (event) {
+    if (eraserMode) {
+        // 获取鼠标在canvas内的坐标
+        const rect = main_canvas.getBoundingClientRect();
+        currentMouseX = event.clientX - rect.left;
+        currentMouseY = event.clientY - rect.top;
+
+        if (mouseDown) {
+            const mousePos = convertMouseToCanvasCoords(event, main_canvas, offsetX, offsetY, zoomLevel);
+            erasePoints(mousePos);
+        }
+
+
+        renderAll();
+    }
 });
 
 
@@ -837,16 +973,6 @@ document.addEventListener('keydown', function (event) {
     renderAll();
 });
 
-main_canvas.addEventListener("mousemove", function(event) {
-    if (eraserMode) {
-        // 获取鼠标在canvas内的坐标
-        const rect = main_canvas.getBoundingClientRect();
-        currentMouseX = event.clientX - rect.left;
-        currentMouseY = event.clientY - rect.top;
-        renderAll();
-    }
-});
-
 
 /** ====================================================================
  *  按钮相关功能
@@ -860,7 +986,7 @@ main_canvas.addEventListener("mousemove", function(event) {
  * @global
  * 使用了全局变量：sliderRadiusValue
  */
-document.getElementById("radiusSlider").addEventListener("input", function() {
+document.getElementById("radiusSlider").addEventListener("input", function () {
     const sliderElement = document.getElementById("radiusSlider");
     const valueElement = document.getElementById("radiusValue");
     const sliderValue = parseInt(sliderElement.value, 10);  // 转换为整数
@@ -882,7 +1008,6 @@ document.getElementById("radiusSlider").addEventListener("input", function() {
 });
 
 
-
 /**
  * @event circle-mode#click
  * @description 监听"circle-mode"按钮的点击事件，用于切换圆形模式。
@@ -900,13 +1025,11 @@ document.getElementById('circle-mode').addEventListener('click', function () {
         maxCircleModeFrame = 0;
         circleModeRadius = 0;
 
-        document.getElementById("main_canvas").style.borderColor = "#ccc";
         document.getElementById("gotoPage").value = currentFrame;
     } else if (selectedPoint && secondSelectedPoint && !eraserMode) {
         circleMode = true;
         circleModeCalculation();
 
-        document.getElementById("main_canvas").style.borderColor = "#ff0000";
         document.getElementById("gotoPage").value = currentCircleModeFrame;
     }
     updateGeneralInfo();
@@ -915,6 +1038,12 @@ document.getElementById('circle-mode').addEventListener('click', function () {
 });
 
 
+/**
+ * @event click
+ * @description 当点击ID为'eraser-mode'的元素时触发。
+ *
+ * 该事件监听器用于切换橡皮擦模式（eraserMode）。点击按钮会改变eraserMode的状态，并更新相关的按钮颜色和信息。
+ */
 document.getElementById('eraser-mode').addEventListener('click', function () {
     if (!circleMode) {
         if (!eraserMode) {
@@ -924,15 +1053,53 @@ document.getElementById('eraser-mode').addEventListener('click', function () {
             eraserMode = false;
             document.getElementById("eraser-mode").style.backgroundColor = "#007bff";
         }
-
     }
     updateGeneralInfo();
     updateButtonColor();
     renderAll();
 });
 
+
+/**
+ * @event click
+ * @description 当点击ID为'ref-mode'的元素时触发。
+ *
+ * 该事件监听器用于切换参考点模式（refPointMode）。在非圈形模式（circleMode）下，如果有选定的参考帧，它将改变refPointMode的状态，并更新相关的输入框、帧数据和Canvas位置。
+ */
+document.getElementById('ref-mode').addEventListener('click', function () {
+    if (!circleMode) {
+        if (refPointMode) {
+            refPointMode = false;
+        } else if (selectRefFrame()) {
+            refPointMode = true;
+            currentFrame = refPointFrames[0];
+
+            // 更新输入框的值为当前帧
+            document.getElementById('gotoPage').value = currentFrame;
+
+            // 更新当前帧的数据
+            currentFrameData = importedJSONData.frame_data[currentFrame];
+
+            // 重新定位Canvas到参考点
+            centerCanvasToRefPoint();
+        }
+    }
+
+
+    updateGeneralInfo();
+    updateButtonColor();
+    renderAll();
+});
+
+
+/**
+ * @event click
+ * @description 当点击ID为'restore'的元素时触发。
+ *
+ * 该事件监听器用于恢复所有点的显示状态。点击按钮会设置所有点的`display`属性为true，并更新相关的信息和按钮颜色。
+ */
 document.getElementById('restore').addEventListener('click', function () {
-    importedJSONData.points.forEach(point=>{
+    importedJSONData.points.forEach(point => {
         point.display = true;
     })
 
@@ -1030,6 +1197,19 @@ function executePrevFunction() {
         // 更新输入框的值为当前帧
         document.getElementById('gotoPage').value = currentCircleModeFrame;
 
+    } else if (refPointMode) {
+        currentRefFrame -= 1;
+        if (currentRefFrame < 0) {
+            currentRefFrame = 0;
+        }
+        currentFrame = refPointFrames[currentRefFrame];
+
+        // 更新输入框的值为当前帧
+        document.getElementById('gotoPage').value = currentFrame;
+
+        // 更新当前帧的数据
+        currentFrameData = importedJSONData.frame_data[currentFrame];
+
     } else {
         // 跳转到前一帧
         currentFrame -= 1;
@@ -1074,6 +1254,19 @@ function executeNextFunction() {
 
         // 更新输入框的值为当前帧
         document.getElementById('gotoPage').value = currentCircleModeFrame;
+    } else if (refPointMode) {
+        currentRefFrame += 1;
+        if (currentRefFrame >= refPointFrames.length) {
+            currentRefFrame = refPointFrames.length - 1;
+        }
+        currentFrame = refPointFrames[currentRefFrame];
+
+        // 更新输入框的值为当前帧
+        document.getElementById('gotoPage').value = currentFrame;
+
+        // 更新当前帧的数据
+        currentFrameData = importedJSONData.frame_data[currentFrame];
+
     } else {
         currentFrame += 1;
 
@@ -1196,8 +1389,13 @@ function clearAll() {
     circleModeRadius = 0;
     circleModeFrames = [];
 
-    //
+    // 重置橡皮擦模式
     eraserMode = false;
+
+    // 重置ref-point模式
+    refPointMode = false;
+    refPointFrames = [];
+    currentRefFrame = 0;
 
     // 重置信息框内信息
     document.getElementById("Total-Frames").innerHTML = "Total Frames:";
@@ -1209,7 +1407,6 @@ function clearAll() {
     document.getElementById("main_canvas").style.borderColor = "#ccc";
     document.getElementById("radiusSlider").value = 50;
     document.getElementById("radiusValue").textContent = "1.00";
-
 
 
     updateButtonColor();
@@ -1285,7 +1482,7 @@ function initializeJsonInfo() {
     centerCanvasToMassCenter();
 
     // 初始化所有点的display参数
-    importedJSONData.points.forEach(point=>{
+    importedJSONData.points.forEach(point => {
         point.display = true;
     })
 
