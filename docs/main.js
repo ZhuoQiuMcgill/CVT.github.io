@@ -482,15 +482,8 @@ function renderAll() {
         drawSelectedPoint(secondSelectedPoint.x, secondSelectedPoint.y, '#ff0e72', circleModeRadius);
     }
 
-    // 根据测试结果更新背景颜色
-    if (proximity.test_result === 0) {
-        document.getElementById("general-info").style.backgroundColor = "#ff8989";
-    } else {
-        document.getElementById("general-info").style.backgroundColor = "#B3FFCA";
-    }
-
-
     renderEraser();
+    updateGeneralInfo();
 
     // 恢复之前保存的绘图状态
     restoreCanvasTransformations();
@@ -699,34 +692,40 @@ function updateSelectedPoint() {
  * 该函数会更新HTML元素以显示总帧数、总点数和选中点（如果有）的信息。
  */
 function updateGeneralInfo() {
+    const testResultColor = importedJSONData.frame_data[currentFrame].proximity.test_result === 1? '#7cf6a1' : '#f56262';
+    let dataSet = [];
+    dataSet.push({name: "Total Frames", value: maxFrame});
+    dataSet.push({name: "Total Points", value: maxPoint});
+    dataSet.push({name: "P1", value: ""});
+    dataSet.push({name: "P2", value: ""});
+    dataSet.push({name: "Point Distance", value: 0});
+
     // 更新选中点的信息
     if (selectedPoint) {
+
+        dataSet[2].value = "(" + selectedPoint.x + ", " + selectedPoint.y + ")";
         if (secondSelectedPoint) {
-            document.getElementById("Selected-Point").innerHTML =
-                "Selected Point: P1-(" + selectedPoint.x.toFixed(2) + ", " + selectedPoint.y.toFixed(2) + ")"
-                + " P2-(" + secondSelectedPoint.x.toFixed(2) + ", " + secondSelectedPoint.y.toFixed(2) + ")";
-            document.getElementById("Point-Distance").innerHTML = "Point Distance: " + circleModeRadius.toFixed(2);
+            dataSet[3].value = "(" + secondSelectedPoint.x + ", " + secondSelectedPoint.y + ")";
+            dataSet[4].value = circleModeRadius;
         } else {
-            document.getElementById("Selected-Point").innerHTML =
-                "Selected Point: (" + selectedPoint.x.toFixed(2) + ", " + selectedPoint.y.toFixed(2) + ")";
-            document.getElementById("Point-Distance").innerHTML = "Point Distance:";
+            dataSet[4].value = 0;
         }
 
     } else {
-        document.getElementById("Selected-Point").innerHTML = "Selected Point:";
+        dataSet[2].value = "";
     }
 
     // 画圈模式下的显示
     if (circleMode) {
-        document.getElementById("Total-Frames").innerHTML = "Total Frames: " + maxCircleModeFrame;
-        document.getElementById("Point-Distance").innerHTML = "Point Distance: " + circleModeRadius.toFixed(2);
-        document.getElementById("Selected-Point").innerHTML =
-            "Selected Point: (" + selectedPoint.x.toFixed(2) + ", " + selectedPoint.y.toFixed(2) + ")";
+        dataSet[0].value = maxCircleModeFrame;
+        dataSet[2].value = "(" + selectedPoint.x + ", " + selectedPoint.y + ")";
+        dataSet[3].value = "(" + secondSelectedPoint.x + ", " + secondSelectedPoint.y + ")";
+        dataSet[4].value = circleModeRadius;
     } else {
-        document.getElementById("Total-Frames").innerHTML = "Total Frames: " + maxFrame;
+        dataSet[0].value = maxFrame;
     }
+    document.getElementById("generalInfoTable").innerHTML = dataSetToHtml(dataSet, testResultColor, testResultColor);
 
-    document.getElementById("Total-Points").innerHTML = "Total Points: " + maxPoint;
 }
 
 
@@ -1445,13 +1444,9 @@ function clearAll() {
     isInputFocused = false;
 
     // 重置信息框内信息
-    document.getElementById("Total-Frames").innerHTML = "Total Frames:";
-    document.getElementById("Total-Points").innerHTML = "Total Points:";
-    document.getElementById("Selected-Point").innerHTML = "Selected Point:";
-    document.getElementById("Point-Distance").innerHTML = "Point Distance:";
-    document.getElementById("pointInfo").innerHTML = "Click on a point to see details here.";
+    document.getElementById('generalInfoTable').innerHTML = "";
     document.getElementById('calculateInfo').innerHTML = "";
-    document.getElementById("general-info").style.backgroundColor = "white";
+    document.getElementById('pointInfo').innerHTML = "";
     document.getElementById("main_canvas").style.borderColor = "#ccc";
     document.getElementById("radiusSlider").value = 50;
     document.getElementById("radiusValue").textContent = "1.00";
@@ -1651,13 +1646,14 @@ function singleDataToHtml(data, backgroundColor) {
         "</tr>";
 }
 
-function dataSetToHtml(dataSet) {
+function dataSetToHtml(dataSet, firstColor='#FFFFFF', secondColor = '#DDDDDD') {
     let c = 0;
     let htmlResult = "<table style=\"font-family: arial, sans-serif; border-collapse: collapse; width: 100%;\">\n" +
         "    <tbody>"
     dataSet.forEach(data => {
-        let bg_color = c % 2 === 0 ? '#FFFFFF' : '#DDDDDD';
+        let bg_color = c % 2 === 0 ? firstColor : secondColor;
         htmlResult += singleDataToHtml(data, bg_color);
+        c++;
     })
     htmlResult += "</tbody>\n" + "</table>";
     return htmlResult;
