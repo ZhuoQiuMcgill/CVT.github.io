@@ -216,6 +216,10 @@ let refPointFrames = [];
  */
 let currentRefFrame = 0;
 
+
+
+let isInputFocused = false;
+
 /**
  * @global
  * @var {Object} main_canvas
@@ -762,10 +766,13 @@ function updateButtonColor() {
 
         document.getElementById("main_canvas").style.borderColor = "#ff0000";
     } else {
-        if (selectedPoint && secondSelectedPoint) {
+        if (selectedPoint && secondSelectedPoint && !eraserMode) {
             circleModeButton.style.backgroundColor = 'green';
+            document.getElementById("circle-radius").style.display = 'block';
+            document.getElementById("circle-radius").value = circleModeRadius.toFixed(2);
         } else {
             circleModeButton.style.backgroundColor = '#007bff';
+            document.getElementById("circle-radius").style.display = 'none';
         }
         circleModeButton.innerHTML = 'Circle Mode';
 
@@ -980,6 +987,9 @@ document.addEventListener('keydown', function (event) {
  * */
 
 
+
+
+
 /**
  * @event radiusSlider#input
  * @description 监听"radiusSlider"元素的输入事件，并更新相关的全局变量和UI。
@@ -1008,6 +1018,25 @@ document.getElementById("radiusSlider").addEventListener("input", function () {
 });
 
 
+document.getElementById('circle-radius').addEventListener('input', function () {
+    // 获取输入框元素和其值
+    const input = document.getElementById('circle-radius');
+
+    // 限制输入值不得小于0或大于maxFrame
+    if (parseInt(input.value) < 0) {
+        input.value = 0;
+    }
+});
+
+document.getElementById('circle-radius').addEventListener('focus', function () {
+    isInputFocused = true;
+});
+
+document.getElementById('circle-radius').addEventListener('blur', function () {
+    isInputFocused = false;
+});
+
+
 /**
  * @event circle-mode#click
  * @description 监听"circle-mode"按钮的点击事件，用于切换圆形模式。
@@ -1027,6 +1056,9 @@ document.getElementById('circle-mode').addEventListener('click', function () {
 
         document.getElementById("gotoPage").value = currentFrame;
     } else if (selectedPoint && secondSelectedPoint && !eraserMode) {
+        const input = document.getElementById("circle-radius");
+
+        circleModeRadius = parseInt(input.value);
         circleMode = true;
         circleModeCalculation();
 
@@ -1315,14 +1347,18 @@ document.addEventListener('keydown', function (event) {
 
     // 如果按下的是左箭头键
     if (key === "ArrowLeft") {
-        executePrevFunction();
-        arrowKeyDownInterval = setInterval(executePrevFunction, 200);
+        if (!isInputFocused) {
+            executePrevFunction();
+            arrowKeyDownInterval = setInterval(executePrevFunction, 200);
+        }
     }
 
     // 如果按下的是右箭头键
     if (key === "ArrowRight") {
-        executeNextFunction();
-        arrowKeyDownInterval = setInterval(executeNextFunction, 200);
+        if (!isInputFocused) {
+            executeNextFunction();
+            arrowKeyDownInterval = setInterval(executeNextFunction, 200);
+        }
     }
 });
 
@@ -1396,6 +1432,8 @@ function clearAll() {
     refPointMode = false;
     refPointFrames = [];
     currentRefFrame = 0;
+
+    isInputFocused = false;
 
     // 重置信息框内信息
     document.getElementById("Total-Frames").innerHTML = "Total Frames:";
@@ -1534,6 +1572,79 @@ function generateRandomColor(id) {
 }
 
 
+/** ====================================================================
+ *  外部计算功能
+ *  ====================================================================
+ * */
+function calculatePairwiseDistances(points)
+{
+    let distances = [];
 
+    for (let i = 0; i < points.length; i++)
+    {
+        for (let j = i + 1; j < points.length; j++)
+        {
+            let x1 = points[i].x;
+            let y1 = points[i].y;
+            let x2 = points[j].x;
+            let y2 = points[j].y;
 
+            let distance = Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+            distances.push({
+                point1: points[i],
+                point2: points[j],
+                distance: distance
+            });
+        }
+    }
+
+    return distances;
+}
+
+function calculateFrameInfo(points)
+{
+    let pairwiseDistances = calculatePairwiseDistances(points);
+    if (pairwiseDistances.length === 0)
+    {
+        return 0;
+    }
+
+    // Calculate the mean
+    let sum = 0;
+    for (let i = 0; i < pairwiseDistances.length; i++)
+    {
+        sum += pairwiseDistances[i].distance;
+    }
+    let mean = sum / pairwiseDistances.length;
+
+    // Calculate the standard deviation
+    let sumOfSquares = 0;
+    for (let i = 0; i < pairwiseDistances.length; i++)
+    {
+        sumOfSquares += Math.pow(pairwiseDistances[i].distance - mean, 2);
+    }
+    let std = Math.sqrt(sumOfSquares / pairwiseDistances.length);
+
+    // Calculate the normalized standard deviation
+    return [{name: "normalized_std", value: (mean === 0) ? 0 : std / mean}];
+}
+
+function singleDataToHtml(data, backgroundColor) {
+    return "<tr style=\"background-color: " + backgroundColor + "\">" +
+    "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.name + "</td>" +
+    "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.value + "</td>" +
+    "</tr>";
+}
+
+function dataSetToHtml(dataSet) {
+    let c = 0;
+    let htmlResult = "<table style=\"font-family: arial, sans-serif; border-collapse: collapse; width: 100%;\">\n" +
+        "    <tbody>"
+    dataSet.forEach(data=>{
+        let bg_color = c % 2 === 0? '#FFFFFF' : '#DDDDDD';
+        htmlResult += singleDataToHtml(data, bg_color);
+    })
+    htmlResult += "</tbody>\n" + "</table>";
+    return htmlResult;
+}
 

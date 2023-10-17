@@ -87,13 +87,17 @@ body {
 .tool-button {
     width: 50px;
     height: 50px;
+    max-width: 50px;
+    max-height: 50px;
     padding: 0;
     margin: 0;
+    border: 1px solid black;
+    box-sizing: border-box;
     background: #007bff;
     color: #fff;
-    border: 1px solid black;
     cursor: pointer;
 }
+
 
 .tool-button:hover {
     background: #0056b3;
@@ -109,7 +113,9 @@ body {
     min-width: 100px;
 }
 
-
+#circle-radius {
+    display: none;
+}
 
 
 .button-container {
