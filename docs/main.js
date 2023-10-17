@@ -217,7 +217,6 @@ let refPointFrames = [];
 let currentRefFrame = 0;
 
 
-
 let isInputFocused = false;
 
 /**
@@ -987,9 +986,6 @@ document.addEventListener('keydown', function (event) {
  * */
 
 
-
-
-
 /**
  * @event radiusSlider#input
  * @description 监听"radiusSlider"元素的输入事件，并更新相关的全局变量和UI。
@@ -1376,6 +1372,19 @@ document.addEventListener('keyup', function (event) {
 });
 
 
+document.getElementById('calculate').addEventListener('click', function (event) {
+    let points = [];
+    importedJSONData.points.forEach(point => {
+        if (point.display) {
+            points.push({x: point.x, y: point.y});
+        }
+    })
+
+    let dataSet = calculateFrameInfo(points);
+    document.getElementById('calculateInfo').innerHTML = dataSetToHtml(dataSet);
+})
+
+
 /** ====================================================================
  *  清除相关功能
  *  ====================================================================
@@ -1441,6 +1450,7 @@ function clearAll() {
     document.getElementById("Selected-Point").innerHTML = "Selected Point:";
     document.getElementById("Point-Distance").innerHTML = "Point Distance:";
     document.getElementById("pointInfo").innerHTML = "Click on a point to see details here.";
+    document.getElementById('calculateInfo').innerHTML = "";
     document.getElementById("general-info").style.backgroundColor = "white";
     document.getElementById("main_canvas").style.borderColor = "#ccc";
     document.getElementById("radiusSlider").value = 50;
@@ -1603,6 +1613,7 @@ function calculatePairwiseDistances(points)
 
 function calculateFrameInfo(points)
 {
+
     let pairwiseDistances = calculatePairwiseDistances(points);
     if (pairwiseDistances.length === 0)
     {
@@ -1629,19 +1640,23 @@ function calculateFrameInfo(points)
     return [{name: "normalized_std", value: (mean === 0) ? 0 : std / mean}];
 }
 
+
+
+
+
 function singleDataToHtml(data, backgroundColor) {
     return "<tr style=\"background-color: " + backgroundColor + "\">" +
-    "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.name + "</td>" +
-    "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.value + "</td>" +
-    "</tr>";
+        "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.name + "</td>" +
+        "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.value + "</td>" +
+        "</tr>";
 }
 
 function dataSetToHtml(dataSet) {
     let c = 0;
     let htmlResult = "<table style=\"font-family: arial, sans-serif; border-collapse: collapse; width: 100%;\">\n" +
         "    <tbody>"
-    dataSet.forEach(data=>{
-        let bg_color = c % 2 === 0? '#FFFFFF' : '#DDDDDD';
+    dataSet.forEach(data => {
+        let bg_color = c % 2 === 0 ? '#FFFFFF' : '#DDDDDD';
         htmlResult += singleDataToHtml(data, bg_color);
     })
     htmlResult += "</tbody>\n" + "</table>";
