@@ -1057,8 +1057,8 @@ document.getElementById('circle-mode').addEventListener('click', function () {
         document.getElementById("gotoPage").value = currentFrame;
     } else if (selectedPoint && secondSelectedPoint && !eraserMode) {
         const input = document.getElementById("circle-radius");
-
-        circleModeRadius = parseInt(input.value);
+        circleModeRadius = parseFloat(input.value);
+        console.log("r = " + circleModeRadius);
         circleMode = true;
         circleModeCalculation();
 
