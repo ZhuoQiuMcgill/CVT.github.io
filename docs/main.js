@@ -718,7 +718,7 @@ function updateGeneralInfo() {
     // 画圈模式下的显示
     if (circleMode) {
         dataSet[0].value = maxCircleModeFrame;
-        dataSet[2].value = "(" + selectedPoint.x + ", " + selectedPoint.y + ")";
+        dataSet[2].value = "(" + firstSelectedPoint.x + ", " + firstSelectedPoint.y + ")";
         dataSet[3].value = "(" + secondSelectedPoint.x + ", " + secondSelectedPoint.y + ")";
         dataSet[4].value = circleModeRadius;
     } else {
@@ -1043,6 +1043,7 @@ document.getElementById('circle-mode').addEventListener('click', function () {
         // 在circleMode下点击按钮将会退出circleMode并重置数据
         circleMode = false;
         selectedPoint = null;
+        firstSelectedPoint = null;
         secondSelectedPoint = null;
         circleModeFrames = [];
         currentCircleModeFrame = 0;
@@ -1050,7 +1051,7 @@ document.getElementById('circle-mode').addEventListener('click', function () {
         circleModeRadius = 0;
 
         document.getElementById("gotoPage").value = currentFrame;
-    } else if (selectedPoint && secondSelectedPoint && !eraserMode) {
+    } else if (firstSelectedPoint && secondSelectedPoint && !eraserMode) {
         const input = document.getElementById("circle-radius");
         circleModeRadius = parseFloat(input.value);
         console.log("r = " + circleModeRadius);
