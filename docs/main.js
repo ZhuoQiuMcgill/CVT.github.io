@@ -1633,7 +1633,11 @@ function calculateFrameInfo(points)
     let std = Math.sqrt(sumOfSquares / pairwiseDistances.length);
 
     // Calculate the normalized standard deviation
-    return [{name: "normalized_std", value: (mean === 0) ? 0 : std / mean}];
+    return [
+        {name: "mean"          , value: mean},
+        {name: "std"           , value: std},
+        {name: "normalized_std", value: (mean === 0) ? 0 : std / mean},
+    ];
 }
 
 
