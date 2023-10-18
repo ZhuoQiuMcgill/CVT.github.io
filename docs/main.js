@@ -1646,7 +1646,7 @@ function calculateFrameInfo(points)
 
 function singleDataToHtml(data, backgroundColor) {
     return "<tr style=\"background-color: " + backgroundColor + "\">" +
-        "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.name + "</td>" +
+        "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px; min-width: 110px\">" + data.name + "</td>" +
         "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.value + "</td>" +
         "</tr>";
 }
