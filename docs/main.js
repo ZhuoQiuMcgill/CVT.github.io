@@ -686,46 +686,48 @@ function updateSelectedPoint() {
 }
 
 /**
- * @function updateGeneralInfo
- * @description 更新一般信息。
- *
- * 该函数会更新HTML元素以显示总帧数、总点数和选中点（如果有）的信息。
+ * 更新选中点的信息到数据集。
+ * @param {Array} dataSet - 存储信息的数组。
  */
-function updateGeneralInfo() {
-    const testResultColor = importedJSONData.frame_data[currentFrame].proximity.test_result === 1? '#7cf6a1' : '#f56262';
-    let dataSet = [];
-    dataSet.push({name: "Total Frames", value: maxFrame});
-    dataSet.push({name: "Total Points", value: maxPoint});
-    dataSet.push({name: "P1", value: ""});
-    dataSet.push({name: "P2", value: ""});
-    dataSet.push({name: "Point Distance", value: 0});
-
-    // 更新选中点的信息
+function updateSelectedPointInfo(dataSet) {
     if (selectedPoint) {
-
-        dataSet[2].value = "(" + selectedPoint.x + ", " + selectedPoint.y + ")";
+        dataSet[2].value = `(${selectedPoint.x}, ${selectedPoint.y})`;
         if (secondSelectedPoint) {
-            dataSet[3].value = "(" + secondSelectedPoint.x + ", " + secondSelectedPoint.y + ")";
+            dataSet[3].value = `(${secondSelectedPoint.x}, ${secondSelectedPoint.y})`;
             dataSet[4].value = circleModeRadius;
         } else {
             dataSet[4].value = 0;
         }
-
     } else {
         dataSet[2].value = "";
     }
+}
 
-    // 画圈模式下的显示
+
+/**
+ * 更新一般信息的显示，包括总帧数、总点数、选定点的信息等。
+ */
+function updateGeneralInfo() {
+    const testResultColor = importedJSONData.frame_data[currentFrame].proximity.test_result === 1 ? '#7cf6a1' : '#f56262';
+
+    let dataSet = [
+        {name: "Total Frames", value: maxFrame},
+        {name: "Total Points", value: maxPoint},
+        {name: "P1", value: ""},
+        {name: "P2", value: ""},
+        {name: "Point Distance", value: 0}
+    ];
+
+    updateSelectedPointInfo(dataSet);
+
     if (circleMode) {
         dataSet[0].value = maxCircleModeFrame;
-        dataSet[2].value = "(" + firstSelectedPoint.x + ", " + firstSelectedPoint.y + ")";
-        dataSet[3].value = "(" + secondSelectedPoint.x + ", " + secondSelectedPoint.y + ")";
+        dataSet[2].value = `(${firstSelectedPoint.x}, ${firstSelectedPoint.y})`;
+        dataSet[3].value = `(${secondSelectedPoint.x}, ${secondSelectedPoint.y})`;
         dataSet[4].value = circleModeRadius;
-    } else {
-        dataSet[0].value = maxFrame;
     }
-    document.getElementById("generalInfoTable").innerHTML = dataSetToHtml(dataSet, testResultColor, testResultColor);
 
+    document.getElementById("generalInfoTable").innerHTML = dataSetToHtml(dataSet, testResultColor, testResultColor);
 }
 
 
@@ -745,46 +747,52 @@ function updatePointRadius() {
 }
 
 
+/**
+ * 设置按钮和输入框的样式
+ * @param {string} elementId - DOM元素的ID。
+ * @param {Object} styles - 要设置的样式属性。
+ */
+function setElementStyles(elementId, styles) {
+    const element = document.getElementById(elementId);
+    Object.assign(element.style, styles);
+}
+
+/**
+ * 更新按钮和主画布的颜色以及其他属性，根据当前模式（参考点模式，圆模式，橡皮擦模式）进行调整。
+ */
 function updateButtonColor() {
-    const refModeButton = document.getElementById("ref-mode");
+    // Update refModeButton and main_canvas
     if (refPointMode) {
-        refModeButton.style.backgroundColor = 'red';
-        refModeButton.innerHTML = 'Exit';
-        document.getElementById("main_canvas").style.borderColor = "#ffd343";
+        setElementStyles("ref-mode", {backgroundColor: 'red', innerHTML: 'Exit'});
+        setElementStyles("main_canvas", {borderColor: '#ffd343'});
     } else {
-        refModeButton.style.backgroundColor = '#007bff';
-        refModeButton.innerHTML = 'Ref Mode';
-        document.getElementById("main_canvas").style.borderColor = "#ccc";
+        setElementStyles("ref-mode", {backgroundColor: '#007bff', innerHTML: 'Ref Mode'});
+        setElementStyles("main_canvas", {borderColor: '#ccc'});
     }
 
-    const circleModeButton = document.getElementById("circle-mode");
+    // Update circleModeButton and circle-radius
+    const circleRadius = document.getElementById("circle-radius");
     if (circleMode) {
-        circleModeButton.style.backgroundColor = 'red';
-        circleModeButton.innerHTML = 'Exit';
-
-        document.getElementById("main_canvas").style.borderColor = "#ff0000";
+        setElementStyles("circle-mode", {backgroundColor: 'red', innerHTML: 'Exit'});
+        setElementStyles("main_canvas", {borderColor: '#ff0000'});
     } else {
-        if (selectedPoint && secondSelectedPoint && !eraserMode) {
-            circleModeButton.style.backgroundColor = 'green';
-            document.getElementById("circle-radius").style.display = 'block';
-            document.getElementById("circle-radius").value = circleModeRadius.toFixed(2);
-        } else {
-            circleModeButton.style.backgroundColor = '#007bff';
-            document.getElementById("circle-radius").style.display = 'none';
+        const backgroundColor = (selectedPoint && secondSelectedPoint && !eraserMode) ? 'green' : '#007bff';
+        setElementStyles("circle-mode", {backgroundColor, innerHTML: 'Circle Mode'});
+
+        circleRadius.style.display = (backgroundColor === 'green') ? 'block' : 'none';
+        if (backgroundColor === 'green') {
+            circleRadius.value = circleModeRadius.toFixed(2);
         }
-        circleModeButton.innerHTML = 'Circle Mode';
 
         if (!refPointMode) {
-            document.getElementById("main_canvas").style.borderColor = "#ccc";
+            setElementStyles("main_canvas", {borderColor: '#ccc'});
         }
     }
 
-    if (!eraserMode) {
-        document.getElementById("eraser-mode").style.backgroundColor = "#007bff";
-    } else {
-        document.getElementById("eraser-mode").style.backgroundColor = "#036727";
-    }
+    // Update eraser-mode
+    setElementStyles("eraser-mode", {backgroundColor: eraserMode ? '#036727' : '#007bff'});
 }
+
 
 /**
  * @function selectRefFrame
@@ -1372,17 +1380,23 @@ document.addEventListener('keyup', function (event) {
 });
 
 
-document.getElementById('calculate').addEventListener('click', function (event) {
-    let points = [];
-    importedJSONData.points.forEach(point => {
-        if (point.display) {
-            points.push({x: point.x, y: point.y});
-        }
-    })
+/**
+ * 筛选需要显示的点
+ * @param {Array} allPoints - 包含多个点的数组。
+ * @return {Array} 筛选后的点的数组。
+ */
+function filterDisplayPoints(allPoints) {
+    return allPoints.filter(point => point.display).map(point => ({x: point.x, y: point.y}));
+}
 
-    let dataSet = calculateFrameInfo(points);
+/**
+ * 绑定点击事件到 'calculate' 元素。当点击时，筛选并计算数据集，并更新 'calculateInfo' 的HTML内容。
+ */
+document.getElementById('calculate').addEventListener('click', function (event) {
+    const points = filterDisplayPoints(importedJSONData.points);
+    const dataSet = calculateFrameInfo(points);
     document.getElementById('calculateInfo').innerHTML = dataSetToHtml(dataSet);
-})
+});
 
 
 /** ====================================================================
@@ -1582,14 +1596,11 @@ function generateRandomColor(id) {
  *  外部计算功能
  *  ====================================================================
  * */
-function calculatePairwiseDistances(points)
-{
+function calculatePairwiseDistances(points) {
     let distances = [];
 
-    for (let i = 0; i < points.length; i++)
-    {
-        for (let j = i + 1; j < points.length; j++)
-        {
+    for (let i = 0; i < points.length; i++) {
+        for (let j = i + 1; j < points.length; j++) {
             let x1 = points[i].x;
             let y1 = points[i].y;
             let x2 = points[j].x;
@@ -1607,60 +1618,65 @@ function calculatePairwiseDistances(points)
     return distances;
 }
 
-function calculateFrameInfo(points)
-{
+function calculateFrameInfo(points) {
 
     let pairwiseDistances = calculatePairwiseDistances(points);
-    if (pairwiseDistances.length === 0)
-    {
+    if (pairwiseDistances.length === 0) {
         return 0;
     }
 
     // Calculate the mean
     let sum = 0;
-    for (let i = 0; i < pairwiseDistances.length; i++)
-    {
+    for (let i = 0; i < pairwiseDistances.length; i++) {
         sum += pairwiseDistances[i].distance;
     }
     let mean = sum / pairwiseDistances.length;
 
     // Calculate the standard deviation
     let sumOfSquares = 0;
-    for (let i = 0; i < pairwiseDistances.length; i++)
-    {
+    for (let i = 0; i < pairwiseDistances.length; i++) {
         sumOfSquares += Math.pow(pairwiseDistances[i].distance - mean, 2);
     }
     let std = Math.sqrt(sumOfSquares / pairwiseDistances.length);
 
     // Calculate the normalized standard deviation
     return [
-        {name: "mean"          , value: mean},
-        {name: "std"           , value: std},
+        {name: "mean", value: mean},
+        {name: "std", value: std},
         {name: "normalized_std", value: (mean === 0) ? 0 : std / mean},
     ];
 }
 
 
-
-
-
+/**
+ * 将单个数据对象转换为HTML表格行。
+ * @param {Object} data - 包含名字和值的数据对象。
+ * @param {string} backgroundColor - 背景色。
+ * @return {string} 生成的HTML字符串。
+ */
 function singleDataToHtml(data, backgroundColor) {
-    return "<tr style=\"background-color: " + backgroundColor + "\">" +
-        "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px; min-width: 110px\">" + data.name + "</td>" +
-        "   <td style=\"border: 1px solid #dddddd; text-align: left; padding: 8px;\">" + data.value + "</td>" +
-        "</tr>";
+    return `<tr style="background-color: ${backgroundColor}">
+               <td style="border: 1px solid #dddddd; text-align: left; padding: 8px; min-width: 110px">${data.name}</td>
+               <td style="border: 1px solid #dddddd; text-align: left; padding: 8px;">${data.value}</td>
+            </tr>`;
 }
 
-function dataSetToHtml(dataSet, firstColor='#FFFFFF', secondColor = '#DDDDDD') {
-    let c = 0;
-    let htmlResult = "<table style=\"font-family: arial, sans-serif; border-collapse: collapse; width: 100%;\">\n" +
-        "    <tbody>"
-    dataSet.forEach(data => {
-        let bg_color = c % 2 === 0 ? firstColor : secondColor;
-        htmlResult += singleDataToHtml(data, bg_color);
-        c++;
-    })
-    htmlResult += "</tbody>\n" + "</table>";
-    return htmlResult;
+/**
+ * 将数据集转换为HTML表格。
+ * @param {Array} dataSet - 包含多个数据对象的数组。
+ * @param {string} [firstColor='#FFFFFF'] - 第一种背景色。
+ * @param {string} [secondColor='#DDDDDD'] - 第二种背景色。
+ * @return {string} 生成的HTML表格。
+ */
+function dataSetToHtml(dataSet, firstColor = '#FFFFFF', secondColor = '#DDDDDD') {
+    const rows = dataSet.map((data, index) => {
+        const bgColor = index % 2 === 0 ? firstColor : secondColor;
+        return singleDataToHtml(data, bgColor);
+    }).join('');
+
+    return `<table style="font-family: arial, sans-serif; border-collapse: collapse; width: 100%;">
+                <tbody>${rows}</tbody>
+            </table>`;
 }
+
 
