@@ -406,6 +406,16 @@ function renderEraser() {
 
 
 /**
+ * TODO:
+ * */
+function renderCircle() {
+    if (circleMode) {
+
+    }
+}
+
+
+/**
  * @function renderAll
  * @description 渲染整个画布，包括所有的点、选定的点和其他相关信息。
  */
@@ -482,8 +492,10 @@ function renderAll() {
         drawSelectedPoint(secondSelectedPoint.x, secondSelectedPoint.y, '#ff0e72', circleModeRadius);
     }
 
+
     renderEraser();
     updateGeneralInfo();
+    renderCircle();
 
     // 恢复之前保存的绘图状态
     restoreCanvasTransformations();
