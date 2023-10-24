@@ -219,6 +219,9 @@ let currentRefFrame = 0;
 
 let isInputFocused = false;
 
+
+let distanceFilterMode = false;
+
 /**
  * @global
  * @var {Object} main_canvas
@@ -431,7 +434,18 @@ function renderAll() {
 
     // 获取当前帧的邻近性信息
     const proximity = importedJSONData.frame_data[currentFrame].proximity;
+    const refID1 = proximity.merging_clusters.first_cluster_id;
+    const refID2 = proximity.merging_clusters.second_cluster_id;
+    const refList1 = getPointsByCluster(refID1);
+    const refList2 = getPointsByCluster(refID2);
+
     let info_text;
+
+
+
+
+
+
 
     // 渲染每一个点
     importedJSONData.points.forEach(point => {
@@ -445,17 +459,21 @@ function renderAll() {
             } else if (label === proximity.merging_clusters.second_cluster_id) {
                 drawPoint(x, y, 'blue', 1.5 * pointRadius);
             } else {
-                // 生成或获取点的颜色
-                if (!clusterColorMap[label]) {
-                    clusterColorMap[label] = generateRandomColor(label);
-                }
-                const color = clusterColorMap[label];
-
-                // 如果点属于选定的簇（cluster），则用特殊的半径绘制
-                if (label === selectedCluster) {
-                    drawPoint(x, y, color, pointRadius * 1.5);
-                } else {
+                if (distanceFilterMode) {
+                    const color = selectColorByDistance(refList1, refList2, point);
                     drawPoint(x, y, color);
+                } else {
+                    // 生成或获取点的颜色
+                    if (!clusterColorMap[label]) {
+                        clusterColorMap[label] = generateRandomColor(label);
+                    }
+                    const color = clusterColorMap[label];
+                    // 如果点属于选定的簇（cluster），则用特殊的半径绘制
+                    if (label === selectedCluster) {
+                        drawPoint(x, y, color, pointRadius * 1.5);
+                    } else {
+                        drawPoint(x, y, color);
+                    }
                 }
             }
 
@@ -675,6 +693,59 @@ function addPointToMap(x, y, myMap) {
  */
 function hasPoint(x, y, myMap) {
     return myMap.has(x + "," + y);
+}
+
+
+
+function distance(x1, y1, x2, y2) {
+    return Math.sqrt((x1 - x2) ** 2 + (y1- y2) ** 2);
+}
+
+function selectColorByDistance(pointList1, pointList2, target) {
+    const label1 = pointList1[0].frames[currentFrame].label;
+    const label2 = pointList2[0].frames[currentFrame].label;
+    if (target.frames[currentFrame].label === label1) {
+        return 'red';
+    }
+    if (target.frames[currentFrame].label === label2) {
+        return 'blue';
+    }
+    let minDistance1 = 2**32-1;
+    let minDistance2 = 2**32-1;
+
+    pointList1.forEach(point=>{
+        const dis = distance(point.x, point.y, target.x, target.y);
+        if (dis < minDistance1) {
+            minDistance1 = dis;
+        }
+    })
+
+    pointList2.forEach(point=>{
+        const dis = distance(point.x, point.y, target.x, target.y);
+        if (dis < minDistance1) {
+            minDistance2 = dis;
+        }
+    })
+
+    return minDistance1 < minDistance2? 'red' : 'blue';
+}
+
+function getRefPoint(refPoint) {
+    importedJSONData.points.forEach(point=>{
+        if (isClickedPos(point.x, point.y, refPoint)) {
+            return point;
+        }
+    })
+}
+
+function getPointsByCluster(clusterID) {
+    let result = [];
+    importedJSONData.points.forEach(point=>{
+        if (point.frames[currentFrame].label === clusterID) {
+            result.push(point);
+        }
+    })
+    return result;
 }
 
 
@@ -1003,6 +1074,15 @@ document.addEventListener('keydown', function (event) {
  *  按钮相关功能
  *  ====================================================================
  * */
+
+
+
+document.getElementById("distance-filter").addEventListener("click", function () {
+    distanceFilterMode = !distanceFilterMode;
+    renderAll();
+});
+
+
 
 
 /**
