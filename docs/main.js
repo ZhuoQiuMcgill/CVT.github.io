@@ -261,7 +261,7 @@ function applyCanvasTransformations() {
     ctx.translate(main_canvas.width / 2, main_canvas.height / 2);
 
     // 应用缩放变换
-    ctx.scale(zoomLevel, zoomLevel);
+    ctx.scale(zoomLevel, -zoomLevel);
 
     // 将原点移回到Canvas的左上角
     ctx.translate(-main_canvas.width / 2, -main_canvas.height / 2);
@@ -554,7 +554,8 @@ function convertMouseToCanvasCoords(event, canvasElement, offsetX, offsetY, zoom
 
     // 先移动到画布中心，然后进行缩放，最后再移动回去
     const scaledX = (x - canvasElement.width / 2) / zoomLevel + canvasElement.width / 2;
-    const scaledY = (y - canvasElement.height / 2) / zoomLevel + canvasElement.height / 2;
+    // 应用Y轴翻转
+    const scaledY = (canvasElement.height / 2 - y) / zoomLevel + canvasElement.height / 2;
 
     // 应用平移
     const finalX = scaledX - offsetX;
@@ -564,16 +565,18 @@ function convertMouseToCanvasCoords(event, canvasElement, offsetX, offsetY, zoom
     return {x: finalX, y: finalY};
 }
 
+
 function convertMouseToCanvasCoordinate(mouseX, mouseY) {
     const scaledX = (mouseX - main_canvas.width / 2) / zoomLevel + main_canvas.width / 2;
-    const scaledY = (mouseY - main_canvas.height / 2) / zoomLevel + main_canvas.height / 2;
-
+    // 应用Y轴翻转
+    const scaledY = (main_canvas.height / 2 - mouseY) / zoomLevel + main_canvas.height / 2;
 
     const finalX = scaledX - offsetX;
     const finalY = scaledY - offsetY;
 
     return {x: finalX, y: finalY};
 }
+
 
 
 /**
